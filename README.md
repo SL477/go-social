@@ -8,3 +8,9 @@ Run with:
 ```bash
 go run main.go
 ```
+
+To install a dependency use:
+
+```bash
+go get URL
+```

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 	"errors"
+	"github.com/google/uuid"
 )
 
 type Client struct {
@@ -126,6 +127,51 @@ func (c Client) DeleteUser(email string) error {
 	_, exists := db.Users[email]
 	if exists {
 		delete(db.Users, email)
+		err = c.updateDB(db)
+	}
+	return err
+}
+
+// posts
+// Create post
+func (c Client) CreatePost(userEmail, text string) (Post, error) {
+	db, err := c.readDB()
+	// check user exists
+	_, exists := db.Users[userEmail]
+	if !exists {
+		return Post{}, errors.New("User doesn't exist")
+	}
+
+	p := Post{
+		ID: uuid.New().String(),
+		CreatedAt: time.Now().UTC(),
+		UserEmail: userEmail,
+		Text: text,
+	}
+	db.Posts[p.ID] = p
+
+	err = c.updateDB(db)
+	return p, err
+}
+
+// Get posts
+func (c Client) GetPosts(userEmail string) ([]Post, error) {
+	db, err := c.readDB()
+	posts := []Post{}
+	for _, p := range db.Posts {
+		if p.UserEmail == userEmail {
+			posts = append(posts, p)
+		}
+	}
+	return posts, err
+}
+
+// Delete post
+func (c Client) DeletePost(id string) error {
+	db, err := c.readDB()
+	_, exists := db.Posts[id]
+	if exists {
+		delete(db.Posts, id)
 		err = c.updateDB(db)
 	}
 	return err
