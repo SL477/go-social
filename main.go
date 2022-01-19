@@ -29,7 +29,7 @@ func respondWithError(w http.ResponseWriter, err error) {
 	e := errorBody{
 		Error: err.Error(),
 	}
-	respondWithJSON(w, 200, e)
+	respondWithJSON(w, http.StatusBadRequest, e)
 }
 
 func testHandler(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +47,85 @@ func testErrHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, errors.New("test error"))
 }
 
+type apiConfig struct {
+	dbClient database.Client
+}
+
+/*func (apiCfg apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+
+}*/
+type parameters struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+	Age      int    `json:"age"`
+}
+
+func (apiCfg apiConfig) endpointUsersHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// Get handler
+		u,err := apiCfg.dbClient.GetUser(params.Email)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, 200, u)
+		break
+	case http.MethodPost:
+		// Post handler
+		u, err := apiCfg.dbClient.CreateUser(params.Email, params.Password, params.Name, params.Age)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, 201, u)
+		break
+	case http.MethodPut:
+		// Put handler
+		u,err := apiCfg.dbClient.UpdateUser(params.Email, params.Password, params.Name, params.Age)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, 201, u)
+		break
+	case http.MethodDelete:
+		// Delete handler
+		err := apiCfg.dbClient.DeleteUser(params.Email)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, 201, errorBody{
+			Error: "Deleted user account",
+		})
+		break
+	default:
+		respondWithError(w, errors.New("method not supported"))
+	}
+}
+
 func main() {
+	// Setup database
+	apiCfg := apiConfig{
+		dbClient: database.NewClient("db.json"),
+	}
+
+	// Run server
 	m := http.NewServeMux()
 	m.HandleFunc("/", testHandler)
 	m.HandleFunc("/err", testErrHandler)
+	m.HandleFunc("/users", apiCfg.endpointUsersHandler)
+	m.HandleFunc("/users/", apiCfg.endpointUsersHandler)
 
 	const addr = "localhost:8080"
 	srv := http.Server{

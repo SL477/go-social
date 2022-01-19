@@ -105,6 +105,7 @@ func (c Client) UpdateUser(email, password, name string, age int) (User, error) 
 	u.Password = password
 	u.Name = name
 	u.Age = age
+	db.Users[email] = u
 
 	err = c.updateDB(db)
 
