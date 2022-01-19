@@ -96,23 +96,33 @@ func (apiCfg apiConfig) endpointUsersHandler(w http.ResponseWriter, r *http.Requ
 			respondWithError(w, err)
 			return
 		}
-		respondWithJSON(w, 201, u)
+		respondWithJSON(w, http.StatusOK, u)
 		break
 	case http.MethodDelete:
 		// Delete handler
+		if params.Email == "" {
+			respondWithJSON(w, http.StatusBadRequest, errorBody{
+				Error: "User account required",
+			})
+			return
+		}
 		err := apiCfg.dbClient.DeleteUser(params.Email)
 		if err != nil {
 			respondWithError(w, err)
 			return
 		}
-		respondWithJSON(w, 201, errorBody{
+		/*respondWithJSON(w, 201, errorBody{
 			Error: "Deleted user account",
-		})
+		})*/
+		//apiCfg.handlerDeleteUser(w, r)
+		respondWithJSON(w, http.StatusOK, struct{}{})
 		break
 	default:
 		respondWithError(w, errors.New("method not supported"))
 	}
 }
+
+
 
 func main() {
 	// Setup database
