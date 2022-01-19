@@ -122,7 +122,59 @@ func (apiCfg apiConfig) endpointUsersHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+type PostParams struct {
+	UserEmail string `json:"userEmail"`
+	Text string `json:"text"`
+	ID string `json:"id"`
+}
 
+func (apiCfg apiConfig) endpointPostHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	params := PostParams{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// Get handler
+		p, err := apiCfg.dbClient.GetPosts(params.UserEmail)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, http.StatusOK, p)
+		break
+	case http.MethodPost:
+		// Post handler
+		p,err := apiCfg.dbClient.CreatePost(params.UserEmail, params.Text)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, http.StatusOK, p)
+		break
+	case http.MethodDelete:
+		// Delete handler
+		if params.ID == "" {
+			respondWithJSON(w, http.StatusBadRequest, errorBody{
+				Error: "ID required",
+			})
+			return
+		}
+		err := apiCfg.dbClient.DeletePost(params.ID)
+		if err != nil {
+			respondWithError(w, err)
+			return
+		}
+		respondWithJSON(w, http.StatusOK, struct{}{})
+		break
+	default:
+		respondWithError(w, errors.New("method not supported"))
+	}
+}
 
 func main() {
 	// Setup database
@@ -136,6 +188,8 @@ func main() {
 	m.HandleFunc("/err", testErrHandler)
 	m.HandleFunc("/users", apiCfg.endpointUsersHandler)
 	m.HandleFunc("/users/", apiCfg.endpointUsersHandler)
+	m.HandleFunc("/posts", apiCfg.endpointPostHandler)
+	m.HandleFunc("/posts/", apiCfg.endpointPostHandler)
 
 	const addr = "localhost:8080"
 	srv := http.Server{
